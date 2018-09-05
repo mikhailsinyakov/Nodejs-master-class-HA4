@@ -1,4 +1,190 @@
+/* Common rules */
+
+html {
+    height: 100%;
+}
+
+body, h1, h2, h3, p, div, nav, ul, input, button {
+    margin: 0;
+    padding: 0;
+    border: none;
+    font-family: sans-serif;
+}
+
+h1, h2, h3 {
+    text-align: center;
+}
+
+a, a:hover, a:active, a:visited {
+    text-decoration: none;
+    color: #1a1a1a;
+}
+
+body {
+    color: #1a1a1a;
+    height: 100%;
+}
+
+.container {
+    min-height: 100%;
+    position: relative;
+}
+
+.ctaWrapper {
+    display: inline-block;
+    text-align: center;
+    margin: 15px 20px 5px 5px;
+}
+
+.cta { 
+    width: 100px;
+    display: inline-block;
+    border-radius: 5px;
+    padding: 10px;
+    margin: 15px 20px 0 0;
+    text-transform: uppercase;
+    color: #fff7f7 !important;
+    box-shadow: 2px 2px 5px 0 #000;
+}
+
+.cta.blue {
+    background-color: #0f1056;
+}
+
+.cta.green {
+    background-color: #3ba711;
+}
+
+/* Rules for header, footer, and content div */
+
+header, footer {
+    box-sizing: border-box;
+}
+
+header {
+    background-color: #c1b924;
+    padding: 5px 20px;
+    border-radius: 15px;
+    height: 80px;
+    min-width: 600px;
+    width: 100%;
+}
+
+nav {
+    float: right;
+    margin: 10px 0;
+}
+
+nav ul li {
+    display: inline-block;
+    margin: 0 5px;
+}
+
+nav ul li.loggedIn {
+    display: none;
+}
+
+nav li a {
+    text-transform: uppercase;
+    font-weight: bold;
+    color: #0f1056;
+    line-height: 50px;
+    font-size: 16px;
+}
+
+nav li a:visited {
+    color: #0f1056;
+}
+
+nav li a:hover, nav li a:active {
+    text-decoration: underline;
+}
+
 .logo {
-    width: 50px;
+    display: inline-block;
+    margin: 5px;
+}
+
+.logo img {
+    width: 60px;
+    height: 60px;
+}
+
+.content {
+    padding-bottom: 50px;
+}
+
+footer {
+    background-color: #85d285;
+    border-radius: 10px;
     height: 50px;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+}
+
+footer p {
+    text-align: center;
+    font-size: 14px;
+    line-height: 50px;
+}
+
+.content h1 {
+    margin: 15px 0 5px 0;
+    font-size: 25px;
+}
+
+.content h2 {
+    margin: 10px 0 5px 0;
+    font-size: 17px;
+}
+
+/* Index */
+
+#index .content .description {
+    padding: 10px;
+    background-color: #c8d2e4;
+    border-radius: 10px;
+    width: 500px;
+    margin: 50px auto;
+    text-align: center;
+    box-shadow: 5px 5px 20px 0px #000;
+}
+
+/* Forms */
+
+.formError {
+    display: none;
+    background-color: #ff2323;
+    padding: 15px;
+    text-align: center;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.formWrapper {
+    margin: 20px auto;
+    width: 500px;
+    background-color: #16cae4;
+    border-radius: 10px;
+    padding: 20px 30px;
+    box-shadow: 5px 5px 30px 0 #000;
+}
+
+.inputWrapper {
+    margin: 10px 0;
+}
+
+.inputLabel {
+    font-size: 16px;
+    display: inline-block;
+    width: 150px;
+}
+
+input {
+    width: 330px;
+    padding: 5px 10px;
+    font-size: 15px;
+    border-radius: 7px;
+    box-sizing: border-box;
 }

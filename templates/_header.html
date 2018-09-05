@@ -7,16 +7,23 @@
         <meta name="author" content="{main.author}" />
         <base href="{main.baseUrl}" />
         <link type="text/css" rel="stylesheet" href="public/main.css" />
+        <link type="image/x-icon" rel="icon" href="favicon.ico?" /> 
         <script type="text/javascript" src="public/app.js"></script>
     </head>
-    <body class="{body.class}">
-        <header>
-            <a class="logo" href='/'><img class="logo" src="public/logo.jpg" alt="logo" /></a>
-            <nav>
-                <ul>
-                    <li><a href="/" >Home</a></li>
-                </ul>
-            </nav>
-        </header>
-        <div class="content">
+    <body id="{body.id}">
+        <div class="container">
+            <header>
+                <a class="logo" href='/'><img src="public/logo.png" alt="logo" /></a>
+                <nav>
+                    <ul>
+                        <li><a href="/" >Home</a></li>
+                        <li class="loggedIn"><a href="menu" >Menu</a></li>
+                        <li class="loggedIn"><a href="cart" >Cart</a></li>
+                        <li class="loggedOut"><a href="login" >Login</a></li>
+                        <li class="loggedOut"><a href="signup" >Signup</a></li>
+                        <li class="loggedIn"><a href="logout" >Logout</a></li>
+                    </ul>
+                </nav>
+            </header>
+            <div class="content">
          
