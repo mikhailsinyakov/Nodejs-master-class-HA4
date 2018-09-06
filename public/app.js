@@ -23,7 +23,7 @@ app.getToken = () => {
         token = null;
     }
     if (!token) {
-        app.removeToken('/');
+        app.removeTokenAndRedirect('/');
     } else {
         app.config.sessionToken = token;
 
@@ -32,23 +32,23 @@ app.getToken = () => {
             .then(response => {
                 const { statusCode, responsePayload } = response;
                 if (statusCode != 200) {
-                    app.removeToken('/');
+                    app.removeTokenAndRedirect('/');
                     return;
                 }
                 app.showNeededNavItems('loggedIn');
                 app.renewalToken();
-            }).catch(e => app.removeToken('/'));
+            }).catch(e => app.removeTokenAndRedirect('/'));
         
     }
 };
 
-// Run app.removeToken when logOutAnchor has been clicked
+// Run app.removeTokenAndRedirect when logOutAnchor has been clicked
 app.bindLogOutAnchor = () => {
     const logOutAnchor = document.querySelector('#logOut');
     if (logOutAnchor) {
         logOutAnchor.addEventListener('click', function(e) {
             e.preventDefault();
-            app.removeToken('session/deleted');
+            app.removeTokenAndRedirect('session/deleted');
         });
     }
 }
@@ -128,7 +128,7 @@ app.processFormSubmission = (formId, requestPayload, statusCode, responsePayload
     }
 
     if (formId == 'accountEditForm3') {
-        app.removeToken('/account/deleted');
+        app.removeTokenAndRedirect('/account/deleted');
     }
 };
 
@@ -137,7 +137,7 @@ app.loadDataOnPage = () => {
     if (app.config.currentPage == 'accountEdit') {
         const token = app.config.sessionToken;
         if (!token) {
-            app.removeToken('/');
+            app.removeTokenAndRedirect('/');
             return;
         }
         const queryStringObject = { email: token.email };
@@ -145,12 +145,28 @@ app.loadDataOnPage = () => {
             .then(response => {
                 const { statusCode, responsePayload } = response;
                 if (statusCode != 200) {
-                    app.removeToken('/');
+                    app.removeTokenAndRedirect('/');
                     return;
                 }
                 app.fillFormFields(responsePayload);
             }).catch(console.error);
     } 
+    if (app.config.currentPage == 'menu') {
+        const token = app.config.sessionToken;
+        if (!token) {
+            app.removeTokenAndRedirect('/');
+            return;
+        }
+        app.client.request(undefined, '/api/menu', 'GET', undefined, undefined)
+            .then(response => {
+                const { statusCode, responsePayload } = response;
+                if (statusCode != 200) {
+                    app.removeTokenAndRedirect('/');
+                    return;
+                }
+                app.addMenuItems(responsePayload);
+            }).catch(console.error);
+    }
 };
 
 app.fillFormFields = data => {
@@ -165,7 +181,32 @@ app.fillFormFields = data => {
     });
 };
 
-app.removeToken = redirect => {
+app.addMenuItems = data => {
+    const container = document.querySelector('#menuItems');
+    data.forEach(item => {
+        const elem = document.createElement('div');
+        elem.classList.add('menuItem');
+        elem.dataset.id = item.id;
+
+        const nameElem = document.createElement('div');
+        nameElem.classList.add('itemName');
+        nameElem.innerHTML = item.name;
+        const descriptionElem = document.createElement('div');
+        descriptionElem.classList.add('itemDescription');
+        descriptionElem.innerHTML = item.description;
+        const priceElem = document.createElement('div');
+        priceElem.classList.add('itemPrice');
+        priceElem.innerHTML = '$' + item.price.toFixed(2);
+
+        elem.appendChild(nameElem);
+        elem.appendChild(descriptionElem);
+        elem.appendChild(priceElem);
+
+        container.appendChild(elem);
+    });
+};
+
+app.removeTokenAndRedirect = redirect => {
     localStorage.removeItem('token');
     app.config.sessionToken = null;
     if (redirect != '/') {

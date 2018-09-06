@@ -223,3 +223,41 @@ input {
 input.disabled {
     background-color: #ecd7d7;
 }
+
+/* Menu */
+
+#menuItems {
+    margin: 10px;
+    background-color: #ecdcdc;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.menuItem {
+    margin: 10px;
+    background-color: #d8b4b4;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.menuItem div {
+    margin: 5px;
+    display: inline-block;
+}
+
+.itemName {
+    font-weight: bold;
+    text-align: center;
+    width: 80%;
+}
+
+.itemDescription {
+    font-style: italic;
+    width: 80%;
+}
+
+.itemPrice {
+    font-weight: bold;
+    width: 15%;
+    text-align: right;
+}
