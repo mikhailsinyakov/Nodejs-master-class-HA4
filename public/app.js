@@ -3,7 +3,7 @@ const app = {};
 app.config = {
     sessionToken: null,
     currentPage: null,
-    pagesForAllUsers: ['index', 'accountCreate', 'sessionCreate']
+    pagesForAllUsers: ['index', 'accountCreate', 'sessionCreate', 'sessionDeleted', 'accountDeleted']
 };
 
 app.getCurrentPageName = () => {
@@ -15,6 +15,7 @@ app.getCurrentPageName = () => {
 
 // Get the token object from localStorage
 app.getToken = () => {
+
     let token;
     try {
         token = JSON.parse(localStorage.getItem('token'));
@@ -22,31 +23,161 @@ app.getToken = () => {
         token = null;
     }
     if (!token) {
-        app.showNeededNavItems('loggedOut');
-        if (!app.config.pagesForAllUsers.includes(app.config.currentPage)) {
-            window.location = '/';
-        }
+        app.removeToken('/');
     } else {
-        app.showNeededNavItems('loggedIn');
-        app.renewalToken();
-    }
-    app.config.sessionToken = token;
-    
+        app.config.sessionToken = token;
 
+        const queryStringObject = { id: token.tokenId };
+        app.client.request(undefined, '/api/tokens', 'GET', queryStringObject, undefined)
+            .then(response => {
+                const { statusCode, responsePayload } = response;
+                if (statusCode != 200) {
+                    app.removeToken('/');
+                    return;
+                }
+                app.showNeededNavItems('loggedIn');
+                app.renewalToken();
+            }).catch(e => app.removeToken('/'));
+        
+    }
 };
 
-// Show navigation items only if they contain specified status of page in the class list or don't contain any classes (like home item)
-app.showNeededNavItems = statusOfPage => {
-    const menuItems = Array.from(document.querySelectorAll('nav li'));
+// Run app.removeToken when logOutAnchor has been clicked
+app.bindLogOutAnchor = () => {
+    const logOutAnchor = document.querySelector('#logOut');
+    if (logOutAnchor) {
+        logOutAnchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            app.removeToken('session/deleted');
+        });
+    }
+}
 
-    menuItems.forEach(item => {
-        if (item.classList.contains(statusOfPage)) {
-            item.style.display = 'inline-block';
-        } else if (item.classList.length) {
-            item.style.display = 'none';
-        }
+// When the form has been submit, send the request via AJAX
+app.bindForms = () => {
+    const allForms = Array.from(document.querySelectorAll('form'));
+    allForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const path = this.action;
+            let method = this.method.toUpperCase();
+            let queryStringObject = {};
+            let requestPayload = {};
+            const elements = Array.from(this.elements);
+            elements.forEach(element => {
+                if (element.name == '_method') {
+                    method = element.value;
+                } else {
+                    requestPayload[element.name] = element.value;
+                }
+            });
+            if (method == 'DELETE') {
+                queryStringObject = { ...requestPayload };
+                requestPayload = {};
+            }
+            
+            app.client.request(undefined, path, method, queryStringObject, requestPayload)
+                .then(response => {
+                    const { statusCode, responsePayload } = response;
+                    app.processFormSubmission(this.id, requestPayload, statusCode, responsePayload);
+                }).catch(console.error);
+        });
     });
+};
 
+app.processFormSubmission = (formId, requestPayload, statusCode, responsePayload) => {
+    const formSuccess = document.querySelector(`#${formId} .formSuccess`);
+
+    app.showOrHideFormMessage(formId, false, false);
+    if (formSuccess) {
+        app.showOrHideFormMessage(formId, true, false);
+    }
+
+    if (statusCode != 200) {
+        app.showOrHideFormMessage(formId, false, true, responsePayload.Error);
+        return;
+    } 
+
+    if (formId == 'accountCreateForm') {
+        // Create a new token
+        const { email, password } = requestPayload;
+        const payload = { email, password };
+        app.client.request(undefined, '/api/tokens', 'POST', undefined, payload)
+            .then(response => {
+                const { statusCode, responsePayload: anotherResponsePayload } = response;
+                if (statusCode != 200) {
+                    app.showOrHideFormMessage(formId, false, true, anotherResponsePayload.Error);
+                    return;
+                }
+                app.successLogin(anotherResponsePayload);
+            }).catch(console.error);
+    }
+
+    if (formId == 'sessionCreateForm') {
+        app.successLogin(responsePayload);
+    }
+
+    if (formId == 'accountEditForm1') {
+        const successMessage = 'Your account data has been changed';
+        app.showOrHideFormMessage(formId, true, true, successMessage);
+    }
+
+    if (formId == 'accountEditForm2') {
+        const successMessage = 'Your password has been changed';
+        app.showOrHideFormMessage(formId, true, true, successMessage);
+    }
+
+    if (formId == 'accountEditForm3') {
+        app.removeToken('/account/deleted');
+    }
+};
+
+
+app.loadDataOnPage = () => {
+    if (app.config.currentPage == 'accountEdit') {
+        const token = app.config.sessionToken;
+        if (!token) {
+            app.removeToken('/');
+            return;
+        }
+        const queryStringObject = { email: token.email };
+        app.client.request(undefined, '/api/users', 'GET', queryStringObject, undefined)
+            .then(response => {
+                const { statusCode, responsePayload } = response;
+                if (statusCode != 200) {
+                    app.removeToken('/');
+                    return;
+                }
+                app.fillFormFields(responsePayload);
+            }).catch(console.error);
+    } 
+};
+
+app.fillFormFields = data => {
+    const allForms = Array.from(document.querySelectorAll('form'));
+    allForms.forEach(form => {
+        const elements = Array.from(form.elements);
+        elements.forEach(element => {
+            if (data[element.name]) {
+                element.value = data[element.name];
+            }
+        });
+    });
+};
+
+app.removeToken = redirect => {
+    localStorage.removeItem('token');
+    app.config.sessionToken = null;
+    if (redirect != '/') {
+        window.location = redirect;
+    }
+    if (!app.config.pagesForAllUsers.includes(app.config.currentPage)) {
+        if (redirect == '/') {
+            window.location = redirect;
+        }
+    } else {
+        app.showNeededNavItems('loggedOut');
+    }
 };
 
 app.client = {};
@@ -107,69 +238,8 @@ app.client.request = (headers, path, method, queryStringObject, payload) => {
 
 };
 
-// When the form has been submit, send the request via AJAX
-app.bindForms = () => {
-    const allForms = Array.from(document.querySelectorAll('form'));
-    allForms.forEach(form => {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const path = this.action;
-            let method = this.method.toUpperCase();
-            let queryStringObject = {};
-            let requestPayload = {};
-            const elements = Array.from(this.elements);
-            elements.forEach(element => {
-                if (element.name == '_method') {
-                    method = element.value;
-                } else {
-                    requestPayload[element.name] = element.value;
-                }
-            });
-            if (method == 'DELETE') {
-                queryStringObject = { ...requestPayload };
-                requestPayload = {};
-            }
-            
-            app.client.request(undefined, path, method, queryStringObject, requestPayload)
-                .then(response => {
-                    const { statusCode, responsePayload } = response;
-                    app.processFormSubmission(this.id, requestPayload, statusCode, responsePayload);
-                }).catch(console.error);
-        });
-    });
-};
-
-app.processFormSubmission = (formId, requestPayload, statusCode, responsePayload) => {
-    if (statusCode != 200) {
-        app.showOrHideFormError(formId, true, responsePayload.Error);
-        return;
-    } 
-
-    app.showOrHideFormError(formId, false);
-    
-    if (formId == 'accountCreateForm') {
-        // Create a new token
-        const { email, password } = requestPayload;
-        const payload = { email, password };
-        app.client.request(undefined, '/api/tokens', 'POST', undefined, payload)
-            .then(response => {
-                const { statusCode, responsePayload: anotherResponsePayload } = response;
-                if (statusCode != 200) {
-                    app.showOrHideFormError(formId, true, anotherResponsePayload.Error);
-                    return;
-                }
-                app.successLogin(anotherResponsePayload);
-            }).catch(console.error);
-    }
-
-    if (formId == 'sessionCreateForm') {
-        app.successLogin(responsePayload);
-    }
-};
-
 // Created token successfully
 app.successLogin = tokenObject => {
-
     // Save the tokenObject in localStorage
     const tokenObjectString = JSON.stringify(tokenObject);
     localStorage.setItem('token', tokenObjectString);
@@ -195,20 +265,37 @@ app.renewalToken = () => {
 };
 
 // Show or hide formError element
-app.showOrHideFormError = (formId, toShow, error) => {
-    const formError = document.querySelector(`#${formId} .formError`);
+app.showOrHideFormMessage = (formId, success, toShow, message) => {
+    const formMessage = success ? document.querySelector(`#${formId} .formSuccess`)
+                                : document.querySelector(`#${formId} .formError`);
     if (toShow) {
-        formError.style.display = 'block';
-        formError.innerHTML = error;
+        formMessage.style.display = 'block';
+        formMessage.innerHTML = message;
     } else {
-        formError.style.display = 'none';
-        formError.innerHTML = '';
+        formMessage.style.display = 'none';
+        formMessage.innerHTML = '';
     }
+};
+
+// Show navigation items only if they contain specified status of page in the class list or don't contain any classes (like home item)
+app.showNeededNavItems = statusOfPage => {
+    const menuItems = Array.from(document.querySelectorAll('nav li'));
+
+    menuItems.forEach(item => {
+        if (item.classList.contains(statusOfPage)) {
+            item.style.display = 'inline-block';
+        } else if (item.classList.length) {
+            item.style.display = 'none';
+        }
+    });
+
 };
 
 // Actions when the contents of the pages is loaded
 document.addEventListener('DOMContentLoaded', e => {
     app.getCurrentPageName();
     app.getToken();
+    app.bindLogOutAnchor();
     app.bindForms();
+    app.loadDataOnPage();
 });

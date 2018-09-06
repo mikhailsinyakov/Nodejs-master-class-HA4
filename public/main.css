@@ -15,9 +15,13 @@ h1, h2, h3 {
     text-align: center;
 }
 
-a, a:hover, a:active, a:visited {
+a {
+    color: #2124bb;
     text-decoration: none;
-    color: #1a1a1a;
+}
+
+a:hover, a:active {
+    text-decoration: underline;
 }
 
 body {
@@ -34,10 +38,20 @@ body {
     display: inline-block;
     text-align: center;
     margin: 15px 20px 5px 5px;
+    width: 100%;
+}
+
+#index .ctaWrapper {
+    width: auto;
+}
+
+a.cta, a.cta:hover, a.cta:active, a.cta:visited {
+    color: #1a1a1a;
+    text-decoration: none;
 }
 
 .cta { 
-    width: 100px;
+    min-width: 100px;
     display: inline-block;
     border-radius: 5px;
     padding: 10px;
@@ -45,6 +59,7 @@ body {
     text-transform: uppercase;
     color: #fff7f7 !important;
     box-shadow: 2px 2px 5px 0 #000;
+    cursor: pointer;
 }
 
 .cta.blue {
@@ -156,7 +171,16 @@ footer p {
 .formError {
     display: none;
     background-color: #ff2323;
-    padding: 15px;
+    padding: 10px;
+    text-align: center;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.formSuccess {
+    display: none;
+    background-color: #5de60e;
+    padding: 10px;
     text-align: center;
     border-radius: 10px;
     margin-bottom: 20px;
@@ -169,6 +193,13 @@ footer p {
     border-radius: 10px;
     padding: 20px 30px;
     box-shadow: 5px 5px 30px 0 #000;
+}
+.warning {
+    background-color: #dc3939;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    box-shadow: 3px 3px 10px 0 #000;
 }
 
 .inputWrapper {
@@ -187,4 +218,8 @@ input {
     font-size: 15px;
     border-radius: 7px;
     box-sizing: border-box;
+}
+
+input.disabled {
+    background-color: #ecd7d7;
 }
