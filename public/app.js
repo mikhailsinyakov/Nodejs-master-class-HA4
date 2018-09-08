@@ -135,7 +135,18 @@ app.processFormSubmission = (formId, requestPayload, statusCode, responsePayload
 
 app.loadDataOnPage = () => {
     if (app.config.currentPage == 'accountEdit') {
-        const token = app.config.sessionToken;
+        app.getAccountData();
+    } 
+    if (app.config.currentPage == 'menu') {
+        app.getMenuData();
+    }
+    if (app.config.currentPage == 'shoppingCart') {
+        app.getCartData();
+    }
+};
+
+app.getAccountData = () => {
+    const token = app.config.sessionToken;
         if (!token) {
             app.removeTokenAndRedirect('/');
             return;
@@ -150,9 +161,10 @@ app.loadDataOnPage = () => {
                 }
                 app.fillFormFields(responsePayload);
             }).catch(console.error);
-    } 
-    if (app.config.currentPage == 'menu') {
-        const token = app.config.sessionToken;
+};
+
+app.getMenuData = () => {
+    const token = app.config.sessionToken;
         if (!token) {
             app.removeTokenAndRedirect('/');
             return;
@@ -164,9 +176,25 @@ app.loadDataOnPage = () => {
                     app.removeTokenAndRedirect('/');
                     return;
                 }
-                app.addMenuItems(responsePayload);
+                app.fillMenuItems(responsePayload);
             }).catch(console.error);
-    }
+};
+
+app.getCartData = () => {
+    const token = app.config.sessionToken;
+        if (!token) {
+            app.removeTokenAndRedirect('/');
+            return;
+        }
+        app.client.request(undefined, '/api/carts', 'GET', undefined, undefined)
+            .then(response => {
+                const { statusCode, responsePayload } = response;
+                if (statusCode != 200) {
+                    app.removeTokenAndRedirect('/');
+                    return;
+                }
+                app.fillShoppingCart(responsePayload);
+            }).catch(console.error);
 };
 
 app.fillFormFields = data => {
@@ -181,29 +209,242 @@ app.fillFormFields = data => {
     });
 };
 
-app.addMenuItems = data => {
+app.fillMenuItems = data => {
     const container = document.querySelector('#menuItems');
     data.forEach(item => {
         const elem = document.createElement('div');
         elem.classList.add('menuItem');
         elem.dataset.id = item.id;
+        elem.addEventListener('click', app.addItemToCart);
 
         const nameElem = document.createElement('div');
         nameElem.classList.add('itemName');
         nameElem.innerHTML = item.name;
-        const descriptionElem = document.createElement('div');
-        descriptionElem.classList.add('itemDescription');
-        descriptionElem.innerHTML = item.description;
         const priceElem = document.createElement('div');
         priceElem.classList.add('itemPrice');
         priceElem.innerHTML = '$' + item.price.toFixed(2);
+        const descriptionElem = document.createElement('div');
+        descriptionElem.classList.add('itemDescription');
+        descriptionElem.innerHTML = item.description;
+        const ctaWrapper = document.createElement('div');
+        ctaWrapper.classList.add('ctaWrapper');
+
+        const addToCartBtn = document.createElement('button');
+        addToCartBtn.classList.add('cta');
+        addToCartBtn.classList.add('green');
+        addToCartBtn.classList.add('addToCart');
+        addToCartBtn.type = 'button';
+        addToCartBtn.innerHTML = 'Add To Cart';
+        ctaWrapper.appendChild(addToCartBtn);
 
         elem.appendChild(nameElem);
+        elem.appendChild(priceElem);
         elem.appendChild(descriptionElem);
+        elem.appendChild(ctaWrapper);
+
+        container.appendChild(elem);
+    });
+};
+
+app.fillShoppingCart = data => {
+    const container = document.querySelector('#cart');
+
+    // Remove all the children of container (for updating purpose)
+    while (cart.firstChild) {
+        cart.removeChild(cart.firstChild);
+    }
+
+    if (!data.items.length) {
+        const noItemsWrapper = document.createElement('div');
+        noItemsWrapper.classList.add('noItemsWrapper');
+
+        const elem1 = document.createElement('h2');
+        elem1.innerHTML = 'You have not added any items to the cart yet';
+        const elem2 = document.createElement('h2');
+        elem2.innerHTML = 'You can select from the <a href="/menu">menu</a> page';
+        noItemsWrapper.appendChild(elem1);
+        noItemsWrapper.appendChild(elem2);
+
+        container.appendChild(noItemsWrapper);
+
+        return;
+    }
+
+    const elem = document.createElement('div');
+        elem.classList.add('productHeader');
+
+        const nameElem = document.createElement('div');
+        nameElem.classList.add('productNameHeader');
+        nameElem.innerHTML = 'Name';
+        const numberElem = document.createElement('div');
+        numberElem.classList.add('productNumberHeader');
+        numberElem.innerHTML = 'Number';
+        const priceElem = document.createElement('div');
+        priceElem.classList.add('productTotalPriceHeader');
+        priceElem.innerHTML = 'Total price';
+
+        elem.appendChild(nameElem);
+        elem.appendChild(numberElem);
+        elem.appendChild(priceElem);
+
+        container.appendChild(elem);
+
+    data.items.forEach(item => {
+        const elem = document.createElement('div');
+        elem.classList.add('productItem');
+        elem.dataset.id = item.id;
+        elem.addEventListener('click', e => {
+            if (e.target.classList.contains('fa-arrow-down')) {
+                app.removeOneItemFromCart(e);
+            }
+            if (e.target.classList.contains('fa-arrow-up')) {
+                app.addOneMoreItemToCart(e);
+            }
+        });
+
+        const nameElem = document.createElement('div');
+        nameElem.classList.add('productName');
+        nameElem.innerHTML = item.name + ' ($' + item.price.toFixed(2) + ')';
+        const numberElem = document.createElement('div');
+        numberElem.classList.add('productNumber');
+        const pieces = item.number + (item.number > 1 ? 'pcs' : 'pc');
+        numberElem.innerHTML = `<i class="fas fa-arrow-down"></i> ${pieces} <i class="fas fa-arrow-up"></i>`;
+        const priceElem = document.createElement('div');
+        priceElem.classList.add('productTotalPrice');
+        priceElem.innerHTML = '$' + (item.price * item.number).toFixed(2);
+
+        elem.appendChild(nameElem);
+        elem.appendChild(numberElem);
         elem.appendChild(priceElem);
 
         container.appendChild(elem);
     });
+
+    const totalPriceElem = document.createElement('div');
+    totalPriceElem.classList.add('totalPrice');
+
+    const elem1 = document.createElement('div');
+    const elem2 = document.createElement('div');
+    elem1.innerHTML = 'Total price:';
+    elem2.innerHTML = '$' + data.sum.toFixed(2);
+
+    totalPriceElem.appendChild(elem1);
+    totalPriceElem.appendChild(elem2);
+
+    container.appendChild(totalPriceElem);
+};
+
+app.addItemToCart = e => {
+    // If a click event happens on button element, add the item to the cart
+    if (e.target.classList.contains('addToCart')) {
+        e.preventDefault();
+        const menuItemElement = e.currentTarget;
+        const itemId = menuItemElement.dataset.id;
+        const path = `/api/carts/${itemId}`;
+        app.client.request(undefined, path, 'POST', undefined, undefined)
+            .then(response => {
+                const { statusCode } = response;
+                if (statusCode != 200) {
+                    app.showNotification('Something went wrong. Try reload the page');
+                    return;
+                }
+                const itemName = document.querySelector(`.menuItem[data-id="${itemId}"] .itemName`).innerHTML;
+                const itemPrice = document.querySelector(`.menuItem[data-id="${itemId}"] .itemPrice`).innerHTML;
+                const data = {
+                    type: 'addItemToCart',
+                    itemName,
+                    itemPrice
+                };
+                app.showNotification(null, data);
+            }).catch(console.error);
+    }
+};
+
+app.addOneMoreItemToCart = e => {
+    const productItemElem = e.currentTarget;
+    const itemId = productItemElem.dataset.id;
+    const path = `/api/carts/${itemId}`;
+    
+    app.client.request(undefined, path, 'POST', undefined, undefined)
+        .then(response => {
+            const { statusCode } = response;
+            if (statusCode != 200) {
+                app.showNotification('Something went wrong. Try reload the page');
+                return;
+            }
+            const productName = document.querySelector(`.productItem[data-id="${itemId}"] .productName`).innerHTML;
+            const itemName = productName.split(' (')[0];
+            const itemPrice = productName.split('(')[1].slice(0, -1);
+            const data = {
+                type: 'addItemToCart',
+                itemName,
+                itemPrice
+            };
+            app.showNotification(null, data);
+            setTimeout(() => app.getCartData(), 2.5 * 1000);
+        }).catch(console.error);
+};
+
+app.removeOneItemFromCart = e => {
+    const productItemElem = e.currentTarget;
+    const itemId = productItemElem.dataset.id;
+    const path = `/api/carts/${itemId}`;
+    
+    app.client.request(undefined, path, 'DELETE', undefined, undefined)
+        .then(response => {
+            const { statusCode } = response;
+            if (statusCode != 200) {
+                app.showNotification('Something went wrong. Try reload the page');
+                return;
+            }
+            const productName = document.querySelector(`.productItem[data-id="${itemId}"] .productName`).innerHTML;
+            const itemName = productName.split(' (')[0];
+            const itemPrice = productName.split('(')[1].slice(0, -1);
+            const data = {
+                type: 'removeItemFromCart',
+                itemName,
+                itemPrice
+            };
+            app.showNotification(null, data);
+            setTimeout(() => app.getCartData(), 2.5 * 1000);
+        }).catch(console.error);
+};
+
+app.showNotification = (err, data) => {
+    // Compose the message
+    let message;
+    if (err) {
+        message = err;
+    } else {
+        const { type, itemName, itemPrice } = data;
+        const action = type == 'addItemToCart' ? 'added' : 'removed';
+        const price = itemPrice ? `for ${itemPrice}` : '';
+        const pronoun = type == 'addItemToCart' ? 'to' : 'from';
+        message = `You have ${action} one "${itemName}" item ${price} ${pronoun} your shopping cart`;
+    }
+    
+    // Add the notification element
+    const bodyElem = document.querySelector('body');
+
+    const notificationElem = document.createElement('div');
+    notificationElem.id = 'notification';
+    notificationElem.innerHTML = message;
+
+    bodyElem.appendChild(notificationElem);
+
+
+    // Blur all the others elements
+    const containerElem = document.querySelector('.container');
+    containerElem.style.filter = 'blur(2px)';
+    containerElem.style.pointerEvents = 'none';
+
+    // Delete the notification element after 2.5 seconds
+    setTimeout(() => {
+        bodyElem.removeChild(notificationElem);
+        containerElem.style.filter = 'none';
+        containerElem.style.pointerEvents = 'auto';
+    }, 2.5 * 1000);
+
 };
 
 app.removeTokenAndRedirect = redirect => {
