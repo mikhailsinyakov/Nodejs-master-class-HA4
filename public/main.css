@@ -354,10 +354,14 @@ input.disabled {
     font-weight: bold;
 }
 
+#cart .ctaWrapper {
+    margin-top: 0;
+}
+
 /* Notification */
 #notification {
     position: fixed;
-    top: calc(50vh - 30px);
+    top: calc(50vh - 100px);
     left: calc(50vw - 150px);
     width: 300px;
     text-align: center;
@@ -368,4 +372,33 @@ input.disabled {
     line-height: 30px;
     box-shadow: 5px 5px 30px 5px #000;
     box-sizing: border-box;
+}
+
+/* Order */
+#stripePublishableKey {
+    display: none;
+}
+
+#makeOrderForm .inputWrapper {
+    text-align: center;
+}
+
+#makeOrderForm .inputLabel {
+    width: 200px;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+#makeOrderForm .formError {
+    margin-top: 20px;
+    margin-bottom: 0;
+}
+
+#makeOrderForm .orderPrice {
+    text-align: center;
+    font-weight: bold;
+}
+
+#makeOrderForm .cta {
+    margin-top: 0;
 }

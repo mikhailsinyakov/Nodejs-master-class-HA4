@@ -6,6 +6,11 @@ app.config = {
     pagesForAllUsers: ['index', 'accountCreate', 'sessionCreate', 'sessionDeleted', 'accountDeleted']
 };
 
+app.stripeElements = {
+    stripe: null,
+    card: null
+};
+
 app.getCurrentPageName = () => {
     let bodyId = document.querySelector('body').id;
     if (typeof bodyId == 'string' && bodyId.length > 0) {
@@ -59,30 +64,65 @@ app.bindForms = () => {
     allForms.forEach(form => {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
-            const path = this.action;
-            let method = this.method.toUpperCase();
-            let queryStringObject = {};
-            let requestPayload = {};
-            const elements = Array.from(this.elements);
-            elements.forEach(element => {
-                if (element.name == '_method') {
-                    method = element.value;
-                } else {
-                    requestPayload[element.name] = element.value;
-                }
-            });
-            if (method == 'DELETE') {
-                queryStringObject = { ...requestPayload };
-                requestPayload = {};
+            if (app.config.currentPage != 'order') {
+                app.submitForm(e, this);
+            } else {
+                app.createStripeToken()
+                    .then(token => {
+                        document.querySelector('#stripeToken').value = token.id;
+                        app.submitForm(e, this);
+                    }).catch(e => {
+                        console.log(e)
+                        const displayError = document.querySelector('#card-errors');
+                        displayError.innerHTML = e.message;
+                        displayError.style.display = 'block';
+                    });
             }
-            
-            app.client.request(undefined, path, method, queryStringObject, requestPayload)
-                .then(response => {
-                    const { statusCode, responsePayload } = response;
-                    app.processFormSubmission(this.id, requestPayload, statusCode, responsePayload);
-                }).catch(console.error);
         });
     });
+};
+
+app.submitForm = (e, form) => {
+    const path = form.action;
+    let method = form.method.toUpperCase();
+    let queryStringObject = {};
+    let requestPayload = {};
+    const elements = Array.from(form.elements);
+    elements.forEach(element => {
+        if (element.name == '_method') {
+            method = element.value;
+        } else {
+            requestPayload[element.name] = element.value;
+        }
+    });
+    if (method == 'DELETE') {
+        queryStringObject = { ...requestPayload };
+        requestPayload = {};
+    }
+
+    // Set another button name while request is loading
+    const submitPaymentBtn = document.querySelector('#submitPayment');
+    if (submitPaymentBtn) {
+        submitPaymentBtn.innerHTML = 'Loading ...';
+    }
+    
+    app.client.request(undefined, path, method, queryStringObject, requestPayload)
+        .then(response => {
+            const { statusCode, responsePayload } = response;
+            app.processFormSubmission(form.id, requestPayload, statusCode, responsePayload);
+        }).catch(console.error);
+};
+
+app.createStripeToken = () => {
+    const { stripe, card } = app.stripeElements;
+
+    return stripe.createToken(card)
+        .then(result => {
+            if (result.error) {
+                throw result.error;
+            } 
+            return result.token;
+        });
 };
 
 app.processFormSubmission = (formId, requestPayload, statusCode, responsePayload) => {
@@ -130,71 +170,101 @@ app.processFormSubmission = (formId, requestPayload, statusCode, responsePayload
     if (formId == 'accountEditForm3') {
         app.removeTokenAndRedirect('/account/deleted');
     }
+
+    if (formId == 'makeOrderForm') {
+
+        // Set previous button name
+        const submitPaymentBtn = document.querySelector('#submitPayment');
+        if (submitPaymentBtn) {
+            submitPaymentBtn.innerHTML = 'Submit Payment';
+        }
+
+        const email = document.querySelector('#email').value;
+        const data = {
+            type: 'successOrder',
+            email
+        };
+
+        app.showNotification(null, data, true, () => {
+            window.location = '/menu';
+        });
+    }
 };
 
 
 app.loadDataOnPage = () => {
     if (app.config.currentPage == 'accountEdit') {
-        app.getAccountData();
+        app.getAccountData()
+            .then(app.fillFormFields)
+            .catch(console.error);
     } 
     if (app.config.currentPage == 'menu') {
-        app.getMenuData();
+        app.getMenuData()
+            .then(app.fillMenuItems)
+            .catch(console.error);
     }
     if (app.config.currentPage == 'shoppingCart') {
-        app.getCartData();
+        app.getCartData()
+            .then(app.fillShoppingCart)
+            .catch(console.error);
+    }
+    if (app.config.currentPage == 'order') {
+        app.getCartData()
+            .then(app.fillOrderPrice)
+            .catch(console.error);
     }
 };
 
 app.getAccountData = () => {
     const token = app.config.sessionToken;
-        if (!token) {
-            app.removeTokenAndRedirect('/');
-            return;
-        }
-        const queryStringObject = { email: token.email };
-        app.client.request(undefined, '/api/users', 'GET', queryStringObject, undefined)
-            .then(response => {
-                const { statusCode, responsePayload } = response;
-                if (statusCode != 200) {
-                    app.removeTokenAndRedirect('/');
-                    return;
-                }
-                app.fillFormFields(responsePayload);
-            }).catch(console.error);
+    if (!token) {
+        app.removeTokenAndRedirect('/');
+        return Promise.reject();
+    }
+    const queryStringObject = { email: token.email };
+    return app.client.request(undefined, '/api/users', 'GET', queryStringObject, undefined)
+        .then(response => {
+            const { statusCode, responsePayload } = response;
+            if (statusCode != 200) {
+                app.removeTokenAndRedirect('/');
+                return;
+            }
+            return responsePayload;
+        });
 };
 
 app.getMenuData = () => {
     const token = app.config.sessionToken;
-        if (!token) {
-            app.removeTokenAndRedirect('/');
-            return;
-        }
-        app.client.request(undefined, '/api/menu', 'GET', undefined, undefined)
-            .then(response => {
-                const { statusCode, responsePayload } = response;
-                if (statusCode != 200) {
-                    app.removeTokenAndRedirect('/');
-                    return;
-                }
-                app.fillMenuItems(responsePayload);
-            }).catch(console.error);
+    if (!token) {
+        app.removeTokenAndRedirect('/');
+        return Promise.reject();
+    }
+    return app.client.request(undefined, '/api/menu', 'GET', undefined, undefined)
+        .then(response => {
+            const { statusCode, responsePayload } = response;
+            if (statusCode != 200) {
+                app.removeTokenAndRedirect('/');
+                return;
+            }
+            return responsePayload;
+        });
 };
 
 app.getCartData = () => {
     const token = app.config.sessionToken;
-        if (!token) {
-            app.removeTokenAndRedirect('/');
-            return;
-        }
-        app.client.request(undefined, '/api/carts', 'GET', undefined, undefined)
-            .then(response => {
-                const { statusCode, responsePayload } = response;
-                if (statusCode != 200) {
-                    app.removeTokenAndRedirect('/');
-                    return;
-                }
-                app.fillShoppingCart(responsePayload);
-            }).catch(console.error);
+    if (!token) {
+        app.removeTokenAndRedirect('/');
+        return Promise.reject();
+    }
+    return app.client.request(undefined, '/api/carts', 'GET', undefined, undefined)
+        .then(response => {
+            const { statusCode, responsePayload } = response;
+            if (statusCode != 200) {
+                app.removeTokenAndRedirect('/');
+                return;
+            }
+            return responsePayload;
+        });
 };
 
 app.fillFormFields = data => {
@@ -261,7 +331,7 @@ app.fillShoppingCart = data => {
         const elem1 = document.createElement('h2');
         elem1.innerHTML = 'You have not added any items to the cart yet';
         const elem2 = document.createElement('h2');
-        elem2.innerHTML = 'You can select from the <a href="/menu">menu</a> page';
+        elem2.innerHTML = 'You can select items on the <a href="/menu">menu</a> page';
         noItemsWrapper.appendChild(elem1);
         noItemsWrapper.appendChild(elem2);
 
@@ -271,23 +341,23 @@ app.fillShoppingCart = data => {
     }
 
     const elem = document.createElement('div');
-        elem.classList.add('productHeader');
+    elem.classList.add('productHeader');
 
-        const nameElem = document.createElement('div');
-        nameElem.classList.add('productNameHeader');
-        nameElem.innerHTML = 'Name';
-        const numberElem = document.createElement('div');
-        numberElem.classList.add('productNumberHeader');
-        numberElem.innerHTML = 'Number';
-        const priceElem = document.createElement('div');
-        priceElem.classList.add('productTotalPriceHeader');
-        priceElem.innerHTML = 'Total price';
+    const nameElem = document.createElement('div');
+    nameElem.classList.add('productNameHeader');
+    nameElem.innerHTML = 'Name';
+    const numberElem = document.createElement('div');
+    numberElem.classList.add('productNumberHeader');
+    numberElem.innerHTML = 'Number';
+    const priceElem = document.createElement('div');
+    priceElem.classList.add('productTotalPriceHeader');
+    priceElem.innerHTML = 'Total price';
 
-        elem.appendChild(nameElem);
-        elem.appendChild(numberElem);
-        elem.appendChild(priceElem);
+    elem.appendChild(nameElem);
+    elem.appendChild(numberElem);
+    elem.appendChild(priceElem);
 
-        container.appendChild(elem);
+    container.appendChild(elem);
 
     data.items.forEach(item => {
         const elem = document.createElement('div');
@@ -328,10 +398,31 @@ app.fillShoppingCart = data => {
     elem1.innerHTML = 'Total price:';
     elem2.innerHTML = '$' + data.sum.toFixed(2);
 
+    const ctaWrapper = document.createElement('div');
+    ctaWrapper.classList.add('ctaWrapper');
+    const btn = document.createElement('button');
+    btn.classList.add('cta');
+    btn.classList.add('green');
+    btn.type = 'button';
+    btn.innerHTML = 'Make an Order';
+    btn.addEventListener('click', e => {
+        e.preventDefault();
+        window.location = '/order';
+    });
+    ctaWrapper.appendChild(btn);
+
     totalPriceElem.appendChild(elem1);
     totalPriceElem.appendChild(elem2);
+    totalPriceElem.appendChild(ctaWrapper);
 
     container.appendChild(totalPriceElem);
+};
+
+app.fillOrderPrice = data => {
+    const orderPriceElem = document.querySelector('.orderPrice');
+    const emailInput = document.querySelector('#email');
+    orderPriceElem.innerHTML = '$' + data.sum.toFixed(2);
+    emailInput.value = data.email;
 };
 
 app.addItemToCart = e => {
@@ -351,7 +442,8 @@ app.addItemToCart = e => {
                 const itemName = document.querySelector(`.menuItem[data-id="${itemId}"] .itemName`).innerHTML;
                 const itemPrice = document.querySelector(`.menuItem[data-id="${itemId}"] .itemPrice`).innerHTML;
                 const data = {
-                    type: 'addItemToCart',
+                    type: 'changeCartItems',
+                    action: 'added',
                     itemName,
                     itemPrice
                 };
@@ -376,12 +468,17 @@ app.addOneMoreItemToCart = e => {
             const itemName = productName.split(' (')[0];
             const itemPrice = productName.split('(')[1].slice(0, -1);
             const data = {
-                type: 'addItemToCart',
+                type: 'changeCartItems',
+                action: 'added',
                 itemName,
                 itemPrice
             };
             app.showNotification(null, data);
-            setTimeout(() => app.getCartData(), 2.5 * 1000);
+            setTimeout(() => {
+                app.getCartData()
+                    .then(app.fillShoppingCart)
+                    .catch(console.error);
+            }, 2.5 * 1000);
         }).catch(console.error);
 };
 
@@ -401,26 +498,41 @@ app.removeOneItemFromCart = e => {
             const itemName = productName.split(' (')[0];
             const itemPrice = productName.split('(')[1].slice(0, -1);
             const data = {
-                type: 'removeItemFromCart',
+                type: 'changeCartItems',
+                action: 'removed',
                 itemName,
                 itemPrice
             };
             app.showNotification(null, data);
-            setTimeout(() => app.getCartData(), 2.5 * 1000);
+            setTimeout(() => {
+                app.getCartData()
+                    .then(app.fillShoppingCart)
+                    .catch(console.error);
+            }, 2.5 * 1000);
         }).catch(console.error);
 };
 
-app.showNotification = (err, data) => {
+app.showNotification = (err, data, hide, callback) => {
+    hide = typeof hide == 'boolean' ? hide : false;
+    callback = typeof callback == 'function' ? callback : null;
+
     // Compose the message
     let message;
     if (err) {
         message = err;
     } else {
-        const { type, itemName, itemPrice } = data;
-        const action = type == 'addItemToCart' ? 'added' : 'removed';
-        const price = itemPrice ? `for ${itemPrice}` : '';
-        const pronoun = type == 'addItemToCart' ? 'to' : 'from';
-        message = `You have ${action} one "${itemName}" item ${price} ${pronoun} your shopping cart`;
+        const { type } = data;
+        if (type == 'changeCartItems') {
+            const { action, itemName, itemPrice } = data;
+            const price = itemPrice ? `for ${itemPrice}` : '';
+            const pronoun = type == 'addItemToCart' ? 'to' : 'from';
+            message = `You have ${action} one "${itemName}" item ${price} ${pronoun} your shopping cart`;
+        }
+        if (type == 'successOrder') {
+            const { email } = data;
+            message = `Your order is placed. Receipt was sent to ${email}`;
+        }
+       
     }
     
     // Add the notification element
@@ -438,13 +550,34 @@ app.showNotification = (err, data) => {
     containerElem.style.filter = 'blur(2px)';
     containerElem.style.pointerEvents = 'none';
 
-    // Delete the notification element after 2.5 seconds
-    setTimeout(() => {
+    function hideNotification() {
         bodyElem.removeChild(notificationElem);
         containerElem.style.filter = 'none';
         containerElem.style.pointerEvents = 'auto';
-    }, 2.5 * 1000);
+    }
 
+    if (!hide) {
+        // Delete the notification element after 2.5 seconds
+        setTimeout(hideNotification, 2.5 * 1000);
+    } else {
+        const ctaWrapper = document.createElement('div');
+        ctaWrapper.classList.add('ctaWrapper');
+
+        const btn = document.createElement('button');
+        btn.classList.add('cta');
+        btn.classList.add('green');
+        btn.innerHTML = 'OK';
+        btn.addEventListener('click', () => {
+            hideNotification();
+            if (callback) {
+                callback();
+            }
+        });
+        ctaWrapper.appendChild(btn);
+
+        notificationElem.appendChild(ctaWrapper);
+    }
+    
 };
 
 app.removeTokenAndRedirect = redirect => {
@@ -460,6 +593,35 @@ app.removeTokenAndRedirect = redirect => {
     } else {
         app.showNeededNavItems('loggedOut');
     }
+};
+
+app.setUpStripeElements = () => {
+    if (app.config.currentPage != 'order') {
+        return;
+    }
+    const stripePublishableKey = document.querySelector('#stripePublishableKey').innerHTML;
+    const stripe = Stripe(stripePublishableKey);
+    app.stripeElements.stripe = stripe;
+    const elements = stripe.elements();
+    const style = {
+        base: {
+            fontSize: '18px'
+        }
+    };
+    const card = elements.create('card', { style });
+    app.stripeElements.card = card;
+    card.mount('#card-element');
+
+    card.addEventListener('change', e => {
+        const displayError = document.querySelector('#card-errors');
+        if (e.error) {
+            displayError.innerHTML = e.error.message;
+            displayError.style.display = 'block';
+        } else {
+            displayError.innerHTML = '';
+            displayError.style.display = 'none';
+        }
+    });
 };
 
 app.client = {};
@@ -580,4 +742,5 @@ document.addEventListener('DOMContentLoaded', e => {
     app.bindLogOutAnchor();
     app.bindForms();
     app.loadDataOnPage();
+    app.setUpStripeElements();
 });

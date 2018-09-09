@@ -1,0 +1,21 @@
+<h1>New Order</h1>
+<h2>Make an Order</h2>
+<hr />
+<div class="formWrapper">
+    <form id="makeOrderForm" action="/api/orders" method="POST">
+        <div class="form-row">
+            <div class="inputWrapper">
+                <div class="inputLabel">Your Card Information: </div>
+                <div id="card-element"></div>
+            </div>
+            <div class="formError" id="card-errors"></div>
+        </div>
+        <input id="stripeToken" type="hidden" name="stripeToken" />
+        <input id="email" type="hidden" name="email" />
+        <div class="orderPrice"></div>
+        <div class="inputWrapper ctaWrapper">
+            <button id="submitPayment" class="cta green" type="submit">Submit Payment</button> 
+        </div>
+    </form>
+</div>
+<h1 id="stripePublishableKey">{stripePublishableKey}</h1>
