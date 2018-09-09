@@ -1,6 +1,17 @@
-# The API for a pizza-delivery company
-### Homework Assignment #2 [(Node.js master class)](https://pirple.thinkific.com)
+# Pizza-delivery company app
+### Homework Assignment #3 [(Node.js master class)](https://pirple.thinkific.com)
 ___
+In order to use my app, you need to:
+- clone this repository to the selected folder
+ ~~~
+git clone https://github.com/mikhailsinyakov/Nodejs-master-class-HA3.git
+ ~~~
+- run node command with your own environment variables
+~~~
+STRIPE_SECRET_KEY=yourStripeKey  MAILGUN_PRIVATE_KEY=yourMailgunKey node index.js
+~~~
+- go to localhost:300 in your browser
+
 An unauthenticated user can:
  - create new account with required fields: firstName, lastName, email, streetAddress
 
@@ -14,6 +25,5 @@ An authenticated user can:
 
 The server will send an email in response to a successful operation
 
-For a successful result, you need to use two environment variables:
- - STRIPE_SECRET_KEY - you can get secret key [here](https://dashboard.stripe.com/account/apikeys)
- - MAILGUN_PRIVATE_KEY - you can get private API key [here](https://app.mailgun.com/app/account/security)
+You can get your Stripe secret key  [here](https://dashboard.stripe.com/account/apikeys)
+You can get your Mailgun private key  [here](https://app.mailgun.com/app/account/security)
