@@ -12,6 +12,10 @@ STRIPE_SECRET_KEY=yourStripeKey  MAILGUN_PRIVATE_KEY=yourMailgunKey node index.j
 ~~~
 - go to localhost:300 in your browser
 
+You can get your Stripe secret key  [here](https://dashboard.stripe.com/account/apikeys)
+
+You can get your Mailgun private key  [here](https://app.mailgun.com/app/account/security)
+
 An unauthenticated user can:
  - create new account with required fields: firstName, lastName, email, streetAddress
 
@@ -25,5 +29,4 @@ An authenticated user can:
 
 The server will send an email in response to a successful operation
 
-You can get your Stripe secret key  [here](https://dashboard.stripe.com/account/apikeys)
-You can get your Mailgun private key  [here](https://app.mailgun.com/app/account/security)
+You can get information by using CLI, for help enter help or man in the console.
