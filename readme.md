@@ -1,10 +1,10 @@
 # Pizza-delivery company app
-### Homework Assignment #3 [(Node.js master class)](https://pirple.thinkific.com)
+### Homework Assignment #4 [(Node.js master class)](https://pirple.thinkific.com)
 ___
 In order to use my app, you need to:
 - clone this repository to the selected folder
  ~~~
-git clone https://github.com/mikhailsinyakov/Nodejs-master-class-HA3.git
+git clone https://github.com/mikhailsinyakov/Nodejs-master-class-HA4.git
  ~~~
 - run node command with your own environment variables
 ~~~
